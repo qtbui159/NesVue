@@ -35,6 +35,7 @@ class CPU6502 implements ICPU6502 {
     public P: StatusRegister;
 
     public Cycles: number = 0;
+    private m_DmaDelay: number = 0;
 
     public constructor(cpuBus: ICPUBus) {
         this.m_CPUBus = cpuBus;
@@ -147,18 +148,22 @@ class CPU6502 implements ICPU6502 {
     }
 
     public ticktockFlatCycle(): void {
+        if (this.m_DmaDelay > 0) {
+            --this.m_DmaDelay;
+            return;
+        }
+
         if (this.Cycles == 0) {
             this.ticktock();
-        } else {
-            this.Cycles--;
         }
+        this.Cycles--;
     }
 
     public dmaCycle(): void {
         if (this.Cycles % 2 == 0) {
-            this.Cycles++;
+            this.m_DmaDelay++;
         }
-        this.Cycles += 513;
+        this.m_DmaDelay += 513;
     }
 
     public reset(): void {

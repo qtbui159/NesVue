@@ -2,6 +2,8 @@
   <div id="screen">
     <canvas id="canvas" width="256" height="240"></canvas>
     <button @click="draw">aa</button>
+    <button @click="draw2">bb</button>
+    <button @click="draw3">cc</button>
     <button @click="loadNesRom">bb</button>
   </div>
 </template>
@@ -42,6 +44,18 @@ export default defineComponent({
       nes.p1SendKey(JoyStickKey.select, false)
     }
 
+    async function draw2 (): Promise<void> {
+      nes.p1SendKey(JoyStickKey.start, true)
+      await MiscUtils.sleepAsync(300)
+      nes.p1SendKey(JoyStickKey.start, false)
+    }
+
+    async function draw3 (): Promise<void> {
+      nes.p1SendKey(JoyStickKey.right, true)
+      await MiscUtils.sleepAsync(300)
+      nes.p1SendKey(JoyStickKey.right, false)
+    }
+
     async function loadNesRom (): Promise<void> {
       nes.insertCartridge(marioRom)
       await nes.powerUp()
@@ -62,7 +76,7 @@ export default defineComponent({
       ctx.value.putImageData(imageData, 0, 0)
     }
 
-    return { ctx, draw, loadNesRom, render }
+    return { ctx, draw, draw2, draw3, loadNesRom, render }
   }
 })
 </script>

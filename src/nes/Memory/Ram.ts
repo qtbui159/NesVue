@@ -12,8 +12,8 @@ export default class Ram implements IRam {
     public readBlock(startAddr: number, endAddr: number): Uint8Array {
         startAddr = this.getRealAddr(startAddr);
         endAddr = this.getRealAddr(endAddr);
-        const r: Uint8Array = new Uint8Array(endAddr - startAddr);
-        for (let i = startAddr; i < endAddr; ++i) {
+        const r: Uint8Array = new Uint8Array(endAddr - startAddr + 1);
+        for (let i = startAddr; i <= endAddr; ++i) {
             r[i - startAddr] = this.m_Data[i];
         }
         return r;

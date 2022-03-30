@@ -78,7 +78,7 @@ class PPU2C02 implements IPPU2C02 {
         this.m_Cycle = 0;
         this.m_EvenFrame = true;
         this.m_Sprite0Hits = false;
-        this.m_SpriteData = new Array(256);
+        this.m_SpriteData = new Array(256 * 2); //横坐标256其实就够了，这里特意扩大一倍防止越界，fetchNextLineSpritePixel方法中最右边的精灵可能会越界
         this.m_Frame = new Array(240);
         this.m_NmiInterrupt = nmiInterrupt;
         for (let i = 0; i < 240; ++i) {
@@ -113,7 +113,6 @@ class PPU2C02 implements IPPU2C02 {
 
         if (this.m_Scanline > 261) {
             this.render();
-
             //所有扫描线都执行完毕，到下一帧了
             this.m_Scanline = 0;
             this.m_Cycle = 0;
@@ -221,7 +220,7 @@ class PPU2C02 implements IPPU2C02 {
             }
         } else if (this.m_Cycle >= 321 && this.m_Cycle <= 336) {
             this.shiftRegisterLeftMove();
-            this.fetchNextLineSpritePixel();
+            this.fillLatch();
         } else if (this.m_Cycle <= 340) {
             //NT byte， Unused NTfetches
         } else {
@@ -236,16 +235,17 @@ class PPU2C02 implements IPPU2C02 {
         const paletteBit0: number = BitUtils.get(this.m_ShiftRegister.tileLowByte, 15 - this.fineXScroll);
         const backgroundPaletteAddressIndex: number = (paletteBit3 << 3) | (paletteBit2 << 2) | (paletteBit1 << 1) | paletteBit0;
         const spriteColor: SpriteColor | null = this.m_SpriteData[x];
+        const isBackgroundTransparent: boolean = backgroundPaletteAddressIndex % 4 == 0;
 
         if (spriteColor != null) {
             //因为有镜像关系，所以能被4整除的其实都是透明色
-            const isTransparent: boolean = spriteColor.paletteAddressIndex % 4 == 0;
+            const isSpriteTransparent: boolean = spriteColor.paletteAddressIndex % 4 == 0;
 
             if (spriteColor.isFrontOfBackground) {
                 //背景前
                 //如果精灵不透明显示精灵色，透明则显示背景色
 
-                if (isTransparent) {
+                if (isSpriteTransparent) {
                     this.m_Frame[y][x] = this.fetchBackgroundPaletteIndexByAddress(backgroundPaletteAddressIndex);
                 } else {
                     this.m_Frame[y][x] = this.fetchSpritePaletteIndexByAddress(spriteColor.paletteAddressIndex);
@@ -256,10 +256,10 @@ class PPU2C02 implements IPPU2C02 {
                 //如果精灵不透明，1.如果背景透明则显示不透明的精灵色
                 //               2.如果背景不透明则显示背景色
 
-                if (isTransparent) {
+                if (isSpriteTransparent) {
                     this.m_Frame[y][x] = this.fetchBackgroundPaletteIndexByAddress(backgroundPaletteAddressIndex);
                 } else {
-                    if (backgroundPaletteAddressIndex == 0) {
+                    if (isBackgroundTransparent) {
                         this.m_Frame[y][x] = this.fetchSpritePaletteIndexByAddress(spriteColor.paletteAddressIndex);
                     } else {
                         this.m_Frame[y][x] = this.fetchBackgroundPaletteIndexByAddress(backgroundPaletteAddressIndex);
@@ -268,7 +268,7 @@ class PPU2C02 implements IPPU2C02 {
             }
 
             if (!this.m_Sprite0Hits && spriteColor.isZero) {
-                if (backgroundPaletteAddressIndex != 0 && !isTransparent) {
+                if (!isBackgroundTransparent && !isSpriteTransparent) {
                     this.m_Sprite0Hits = true;
                     this.Status.S = 1;
                 }
@@ -292,7 +292,7 @@ class PPU2C02 implements IPPU2C02 {
         }
 
         const spriteHeight: number = this.Ctrl.H == 1 ? 16 : 8;
-        for (let i = 0; i < 64; i += 4) {
+        for (let i = 0; i < 256; i += 4) {
             const y: number = this.oam[i];
             const x: number = this.oam[i + 3];
             if (y >= 0xef) {
@@ -307,7 +307,7 @@ class PPU2C02 implements IPPU2C02 {
                 spriteData[1] = this.oam[i + 1];
                 spriteData[2] = this.oam[i + 2];
                 spriteData[3] = this.oam[i + 3];
-                const sprite: Sprite = new Sprite(i, spriteData);
+                const sprite: Sprite = new Sprite(i / 4, spriteData);
                 this.m_SecondOAM.push(sprite);
 
                 if (this.m_SecondOAM.length >= 8) {
@@ -350,7 +350,7 @@ class PPU2C02 implements IPPU2C02 {
             return;
         }
 
-        let key: number = this.m_Cycle % 8;
+        const key: number = this.m_Cycle % 8;
         if (key == 0) {
             this.increaseX();
         } else if (key == 1) {
