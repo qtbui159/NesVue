@@ -1,3 +1,3 @@
 export default interface IRenderAction{
-    (rgb: number[]): void;
+    (rgb: Uint8ClampedArray): void;
 }

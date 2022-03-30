@@ -51,7 +51,7 @@ class PPU2C02 implements IPPU2C02 {
     private m_EvenFrame: boolean;
     private m_Sprite0Hits: boolean;
     private m_SpriteData: (SpriteColor | null)[];
-    private m_Frame: number[][];
+    private m_Frame: Uint8ClampedArray;
     private m_NmiInterrupt: VoidFunction;
 
     private m_Render: IRenderAction | null;
@@ -79,11 +79,8 @@ class PPU2C02 implements IPPU2C02 {
         this.m_EvenFrame = true;
         this.m_Sprite0Hits = false;
         this.m_SpriteData = new Array(256 * 2); //横坐标256其实就够了，这里特意扩大一倍防止越界，fetchNextLineSpritePixel方法中最右边的精灵可能会越界
-        this.m_Frame = new Array(240);
+        this.m_Frame = new Uint8ClampedArray(256 * 240);
         this.m_NmiInterrupt = nmiInterrupt;
-        for (let i = 0; i < 240; ++i) {
-            this.m_Frame[i] = new Array(256);
-        }
 
         this.m_Render = null;
     }
@@ -236,7 +233,7 @@ class PPU2C02 implements IPPU2C02 {
         const backgroundPaletteAddressIndex: number = (paletteBit3 << 3) | (paletteBit2 << 2) | (paletteBit1 << 1) | paletteBit0;
         const spriteColor: SpriteColor | null = this.m_SpriteData[x];
         const isBackgroundTransparent: boolean = backgroundPaletteAddressIndex % 4 == 0;
-
+        const pos: number = y * 256 + x;
         if (spriteColor != null) {
             //因为有镜像关系，所以能被4整除的其实都是透明色
             const isSpriteTransparent: boolean = spriteColor.paletteAddressIndex % 4 == 0;
@@ -246,9 +243,9 @@ class PPU2C02 implements IPPU2C02 {
                 //如果精灵不透明显示精灵色，透明则显示背景色
 
                 if (isSpriteTransparent) {
-                    this.m_Frame[y][x] = this.fetchBackgroundPaletteIndexByAddress(backgroundPaletteAddressIndex);
+                    this.m_Frame[pos] = this.fetchBackgroundPaletteIndexByAddress(backgroundPaletteAddressIndex);
                 } else {
-                    this.m_Frame[y][x] = this.fetchSpritePaletteIndexByAddress(spriteColor.paletteAddressIndex);
+                    this.m_Frame[pos] = this.fetchSpritePaletteIndexByAddress(spriteColor.paletteAddressIndex);
                 }
             } else {
                 //背景后
@@ -257,12 +254,12 @@ class PPU2C02 implements IPPU2C02 {
                 //               2.如果背景不透明则显示背景色
 
                 if (isSpriteTransparent) {
-                    this.m_Frame[y][x] = this.fetchBackgroundPaletteIndexByAddress(backgroundPaletteAddressIndex);
+                    this.m_Frame[pos] = this.fetchBackgroundPaletteIndexByAddress(backgroundPaletteAddressIndex);
                 } else {
                     if (isBackgroundTransparent) {
-                        this.m_Frame[y][x] = this.fetchSpritePaletteIndexByAddress(spriteColor.paletteAddressIndex);
+                        this.m_Frame[pos] = this.fetchSpritePaletteIndexByAddress(spriteColor.paletteAddressIndex);
                     } else {
-                        this.m_Frame[y][x] = this.fetchBackgroundPaletteIndexByAddress(backgroundPaletteAddressIndex);
+                        this.m_Frame[pos] = this.fetchBackgroundPaletteIndexByAddress(backgroundPaletteAddressIndex);
                     }
                 }
             }
@@ -274,7 +271,7 @@ class PPU2C02 implements IPPU2C02 {
                 }
             }
         } else {
-            this.m_Frame[y][x] = this.fetchBackgroundPaletteIndexByAddress(backgroundPaletteAddressIndex);
+            this.m_Frame[pos] = this.fetchBackgroundPaletteIndexByAddress(backgroundPaletteAddressIndex);
         }
     }
 
@@ -555,8 +552,7 @@ class PPU2C02 implements IPPU2C02 {
             return;
         }
 
-        const result: number[] = this.m_Frame.flat();
-        this.m_Render(result);
+        this.m_Render(this.m_Frame);
     }
 }
 

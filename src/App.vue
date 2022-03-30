@@ -21,7 +21,6 @@ export default defineComponent({
   name: 'App',
   setup () {
     const ctx: Ref<CanvasRenderingContext2D | null> = ref(null)
-    let imageData: ImageData | null = null
     const nes: INes = new Nes()
 
     onMounted(() => {
@@ -32,7 +31,6 @@ export default defineComponent({
       const tmp: CanvasRenderingContext2D | null = canvas.getContext('2d')
       if (tmp) {
         ctx.value = tmp
-        imageData = ctx.value.createImageData(256, 240)
       }
 
       nes.setRenderCallback(render)
@@ -61,18 +59,11 @@ export default defineComponent({
       await nes.powerUp()
     }
 
-    function render (rgb: number[]): void {
-      if (ctx.value == null || imageData == null) {
+    function render (rgba: Uint8ClampedArray): void {
+      if (ctx.value == null) {
         return
       }
-      let j = 0
-      for (let i = 0, count = rgb.length; i < count; i += 3) {
-        imageData.data[j++] = rgb[i]
-        imageData.data[j++] = rgb[i + 1]
-        imageData.data[j++] = rgb[i + 2]
-        imageData.data[j++] = 0xff
-      }
-
+      const imageData: ImageData = new ImageData(rgba, 256, 240)
       ctx.value.putImageData(imageData, 0, 0)
     }
 
@@ -101,5 +92,13 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
+}
+
+#screen > canvas {
+  transform: scale(1, 1);
+}
+
+#screen > button:nth-of-type(4) {
+  z-index: 1;
 }
 </style>

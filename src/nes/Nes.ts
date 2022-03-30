@@ -70,8 +70,8 @@ class Nes implements INes {
     }
 
     public setRenderCallback(render: IRenderAction): void {
-        this.m_PPU2C02.setRenderCallback((rgbIndex: number[]) => {
-            const result: number[] = new Array(rgbIndex.length * 3);
+        this.m_PPU2C02.setRenderCallback((rgbIndex: Uint8ClampedArray) => {
+            const result: Uint8ClampedArray = new Uint8ClampedArray(rgbIndex.length * 4);
             let j: number = 0;
 
             for (let i = 0, count = rgbIndex.length; i < count; ++i) {
@@ -79,6 +79,7 @@ class Nes implements INes {
                 result[j++] = rgb.R;
                 result[j++] = rgb.G;
                 result[j++] = rgb.B;
+                result[j++] = 0xff;
             }
 
             render(result);
